@@ -4,13 +4,20 @@ let highscore = 0;
 let score = 0;
 let forg = createFrog();
 let startTime = 0;
+let lives = 3
+let game
+
+const PLATFORM_SPACING = 300;
+let highestPlatform = 3*PLATFORM_SPACING;
 
 let camY = 0;
 const CAM_TARGET = SCREEN_H/6;
 const CAM_EASE = 0.01;
 
+const ROUNDING = 4;
+
 const SPAWN_TIME = 5000; // 30 seconds in miliseconds
-const SHARK_SPEED = 0;
+const SHARK_LAUNCH_FORCE = 10;
 const HOLD_DELTA_CAP = 500;
 
 const debugGraphics = {};
@@ -20,8 +27,9 @@ const platforms = [];
 const shark = createShark();
 
 function createPlatform(y) {
-    const randW = random(30, 100);
-    const randX = random(randW, width-randW)
+    let randW = random(100, 400);
+    // let randW = 40;
+    let randX = random(randW, width-randW)
 
     return {
         posX: randX, posY: y,
@@ -30,8 +38,8 @@ function createPlatform(y) {
         display() {
             rectMode(CENTER);
             noStroke();
-            fill(50, 100, 50);
-            rect(this.posX, height - this.posY, this.w, PLATFORM_HEIGHT);
+            fill(50, 100, 50, 50);
+            rect(this.posX, height - this.posY, randW, PLATFORM_HEIGHT, ROUNDING);
         }
     };
 }
@@ -39,42 +47,90 @@ function createPlatform(y) {
 function createShark() {
     return {
         posX: 0, posY: 0,
-        velX: SHARK_SPEED, velY: SHARK_SPEED,
+        velX: 0, velY: 0,
         drag: 0.99,
+        grav: -0.2,
         facingLeft: false,
         
         
         w: 40, h: 40,
         img: null,
         
-        jump(multiplier = 1) {
-            this.velY += this.yJumpForce * multiplier;
-            this.velX += this.xJumpForce * (this.facingLeft ? -1 : 1) * multiplier;
-        },
     
         update () {
+            this.velY += this.grav;
+
             this.velX *= this.drag;
             this.velX *= this.drag;
-        
+
             this.posX += this.velX;
             this.posY += this.velY;
+
+            //Check for collision with frog
+            const xTouch = this.posX > forg.posX - forg.w/2 && this.posX < forg.posX + forg.w/2;
+            const yTouch = this.posY > forg.posY - forg.h/2 && this.posY < forg.posY + forg.h/2;
+            if(xTouch && yTouch){
+                console.log("Shark ate frog!!!");
+                lives--;
+
+                if(lives <= 0){
+                    dead = true;
+                }
+            }
         },
     
         display() {
             rectMode(CENTER);
             stroke(0, 50, 0);
             fill(50, 110, 200);
-            rect(this.posX, height - this.posY - this.h/2, this.w, this.h);
-            fill(255);
-            rect(this.posX + this.w*(this.facingLeft ? -1 : 1)/10, height - this.posY - this.h/2, this.w/5, this.h/5);
-            rect(this.posY + 2*this.w*(this.facingLeft ? -1 : 1)/5, height - this.posY - this.h/2, this.w/5, this.h/5);
+            rect(this.posX, height - this.posY - this.h/2, this.w*1.4, this.h, ROUNDING);
+            const dir = this.facingLeft ? -1 : 1;
+
+            triangle(
+                this.posX,
+                height - this.posY - this.h,
+                this.posX - dir*this.w/3,
+                height - this.posY - this.h,
+                this.posX - dir*1.2*this.w/3,
+                height - this.posY - 1.4*this.h,
+            );
+
+            fill(255, 150, 150);
+            const eyeW = this.w/5;
+            const eyeH = 3*this.h/5;
+            const eyeSpacing = 3*this.w/10;
+            triangle(
+                this.posX,
+                height - this.posY - eyeH,
+                this.posX + dir*eyeW,
+                height - this.posY + eyeW - eyeH,
+                this.posX,
+                height - this.posY + eyeW - eyeH,
+            );
+            triangle(
+                this.posX + dir*(eyeW + eyeSpacing),
+                height - this.posY - eyeH,
+                this.posX + dir*eyeSpacing,
+                height - this.posY + eyeW - eyeH,
+                this.posX + dir*(eyeW + eyeSpacing),
+                height - this.posY + eyeW - eyeH,
+            );
         },
 
         spawn(){
-            
-        },
-    }     
+            const spawnLeft = random(0, 1) < 0.5;
 
+            this.posX = spawnLeft ? 0 : width;
+            this.posY = camY;
+
+            this.velX = (spawnLeft ? 1 : -1) * SHARK_LAUNCH_FORCE;
+            this.velY = SHARK_LAUNCH_FORCE*4;
+
+            this.facingLeft = !spawnLeft;
+
+            this.posY < height/2 + camY? this.velY = SHARK_LAUNCH_FORCE : this.velY = -SHARK_LAUNCH_FORCE;
+        }     
+    }
 }
 
             
@@ -123,23 +179,23 @@ function createFrog() {
                 this.velX *= -1;
             }
             // Platform collision
-            debugGraphics["feet"] = () => {
-                stroke(255, 0, 0);
-                const h = height - this.posY;
-                line(0, h, width, h);
-                const v = this.posX+this.w/2;
-                line(v, 0, v, height);
-            }
+            // debugGraphics["feet"] = () => {
+            //     stroke(255, 0, 0);
+            //     const h = height - this.posY;
+            //     line(0, h, width, h);
+            //     const v = this.posX+this.w/2;
+            //     line(v, 0, v, height);
+            // }
 
             for (let plat of platforms) {
                 const platSurface = plat.posY + PLATFORM_HEIGHT/2;
                 const forgL = this.posX - this.w/2;
                 const forgR = this.posX + this.w/2;
-                debugGraphics[`plat-${round(plat.posY)}`] = () => {
-                    stroke(0, 255, 255);
-                    const h = platSurface;
-                    line(0, h, width, h);
-                };
+                // debugGraphics[`plat-${round(plat.posY)}`] = () => {
+                //     stroke(0, 255, 255);
+                //     const h = platSurface;
+                //     line(0, h, width, h);
+                // };
 
                 if (
                     this.posY < platSurface &&
@@ -159,8 +215,17 @@ function createFrog() {
         display() {
             rectMode(CENTER);
             stroke(0, 50, 0);
+
+            // Body
             fill(100, 255, 100);
-            rect(this.posX, height - this.posY - this.h/2, this.w, this.h);
+            rect(this.posX, height - this.posY - this.h/2, this.w, this.h, ROUNDING);
+
+            // Legs
+            // rect(this.posX + this.w*0.55, height - this.posY, this.w/5, this.h/5);
+            // rect(this.posX + this.w*0.15, height - this.posY, this.w/5, this.h/5);
+            // rect(this.posX - this.w*0.35, height - this.posY - this.h*0.1, this.w/2, this.h/2);
+
+            // Eyes
             fill(255);
             rect(this.posX + this.w*(this.facingLeft ? -1 : 1)/10, height - this.posY - this.h/2, this.w/5, this.h/5);
             rect(this.posX + 2*this.w*(this.facingLeft ? -1 : 1)/5, height - this.posY - this.h/2, this.w/5, this.h/5);
@@ -180,9 +245,9 @@ function setup () {
     startTime = millis();
     camY = -CAM_TARGET;
 
-    platforms.push(createPlatform(100));
-    platforms.push(createPlatform(100));
-    platforms.push(createPlatform(300));
+    platforms.push(createPlatform(PLATFORM_SPACING));
+    platforms.push(createPlatform(2*PLATFORM_SPACING));
+    platforms.push(createPlatform(3*PLATFORM_SPACING));
 }
 
 let startedHold = null;
@@ -244,15 +309,20 @@ function draw () {
     //========== UPDATE ==========//
     forg.update();
     shark.update();
-    if (abs(forg.velY) < 0.05) {
+    // Forg is in the air, and forg is not off the screen
+    if (abs(forg.velY) < 0.05 && !(forg.posY < 0)) {
         const camDelta = camY - forg.posY + CAM_TARGET;
-        camY -= camDelta * CAM_EASE;
+        camY -= camDelta * CAM_EASE * (camDelta > 0 ? 3 : 1);
     }
 
 
     calculateScore();
 
-
+    // Update platforms
+    if (forg.posY > highestPlatform - 2*PLATFORM_SPACING) {
+        highestPlatform += PLATFORM_SPACING;
+        platforms.push(createPlatform(highestPlatform + random(PLATFORM_SPACING/3)));
+    }
 
 
     //========== DISPLAY ==========//
@@ -272,13 +342,15 @@ function draw () {
     for (let plat of platforms) {
         plat.display();
     }
-
-    forg.display();
-
     if (elapsedTime > SPAWN_TIME){
         shark.spawn();
         startTime = millis();
     }
+    
+    forg.display();
+    shark.display();
+
+
     // fill(255, 0, 0);
     // rect(mouseX, mouseY, 40, 40, 20);
 
@@ -298,18 +370,21 @@ function draw () {
     textSize(15);
     text("Time: " + (elapsedTime*0.001).toFixed(3), 450, 20);
 
+    if(dead){
+        textSize(50);
+        fill(255, 0, 0);
+        text("GameOver", 250, 250);
+    }
 }
 
-function calculateScore(){
+function calculateScore() {
     // Add meters/points to the score
     score = forg.posY/100;
+    highscore = max(highscore, score);
+}
 
-    if (score > highscore) {
-        const prevHighscore = highscore;
-        highscore = score;
-        
-        if (floor(200*prevHighscore) < floor(200*highscore)) {
-            platforms.push(createPlatform(floor(200*highscore)+200));
-        }
-    }
+
+function gameOver(){
+    noLoop();
+    console.log("Game over!!!");
 }
