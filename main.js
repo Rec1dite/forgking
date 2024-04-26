@@ -5,7 +5,7 @@ let score = 0;
 let forg = createFrog();
 let startTime = 0;
 let lives = 3
-let game
+let dead = false;
 
 const PLATFORM_SPACING = 300;
 let highestPlatform = 3*PLATFORM_SPACING;
@@ -16,7 +16,7 @@ const CAM_EASE = 0.01;
 
 const ROUNDING = 4;
 
-const SPAWN_TIME = 5000; // 30 seconds in miliseconds
+const SPAWN_TIME = 5000; // 5 seconds in miliseconds
 const SHARK_LAUNCH_FORCE = 10;
 const HOLD_DELTA_CAP = 500;
 
@@ -310,10 +310,10 @@ function draw () {
     forg.update();
     shark.update();
     // Forg is in the air, and forg is not off the screen
-    if (abs(forg.velY) < 0.05 && !(forg.posY < 0)) {
+    // if (abs(forg.velY) < 0.05) {
         const camDelta = camY - forg.posY + CAM_TARGET;
         camY -= camDelta * CAM_EASE * (camDelta > 0 ? 3 : 1);
-    }
+    // }
 
 
     calculateScore();
@@ -373,7 +373,9 @@ function draw () {
     if(dead){
         textSize(50);
         fill(255, 0, 0);
-        text("GameOver", 250, 250);
+        text("GameOver", 200, 250);
+
+        gameOver();
     }
 }
 
