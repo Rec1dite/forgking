@@ -22,9 +22,18 @@ const HOLD_DELTA_CAP = 500;
 
 const debugGraphics = {};
 
+const clouds = [];
+
 const PLATFORM_HEIGHT = 70;
 const platforms = [];
 const shark = createShark();
+
+function createCloud() {
+    return {
+        delay: random(0, width/2),
+        size: random(40, 80)
+    }
+}
 
 function createPlatform(y) {
     let randW = random(100, 400);
@@ -233,9 +242,6 @@ function createFrog() {
     }
 }
 
-
-
-
 function setup () {
     createCanvas(SCREEN_W, SCREEN_H);
     forg.posX = width / 2;
@@ -248,6 +254,10 @@ function setup () {
     platforms.push(createPlatform(PLATFORM_SPACING));
     platforms.push(createPlatform(2*PLATFORM_SPACING));
     platforms.push(createPlatform(3*PLATFORM_SPACING));
+
+    for (let c = 0; c < 3; c++) {
+        clouds.push(createCloud())
+    }
 }
 
 let startedHold = null;
@@ -324,9 +334,45 @@ function draw () {
         platforms.push(createPlatform(highestPlatform + random(PLATFORM_SPACING/3)));
     }
 
+    if(dead){
+        textSize(50);
+        textAlign(CENTER, CENTER);
+        fill(100, 50, 50);
+        text("FORG IS KIL\n🐸", width/2+2, height/2+2);
+        fill(255, 50, 50);
+        text("FORG IS KIL\n🐸", width/2, height/2);
+        textSize(14);
+        fill(255)
+        text("Press R to restart", width/2, height/2 + 80);
+
+        if (keyIsPressed && key === 'r') {
+            window.reload(); // todo
+        }
+        return;
+    }
+
 
     //========== DISPLAY ==========//
+    // Background
     background(105, 202, 255);
+    textSize(80);
+    fill(255, 240);
+    text("☀️", 4*width/5, height/5);
+    
+    for (let c = 0; c < clouds.length; c++) {
+        const cloud = clouds[c];
+        const pos = frameCount + cloud.delay;
+        const posX = (pos % (1.5*width))-0.25*width;
+        // const posY = floor(pos/width)*width;
+        const posY = 0;
+
+        textSize(cloud.size);
+        text("☁️", posX, posY + 0.5*camY);
+
+        if (posX > 1.2*width) {
+            clouds[c] = createCloud();
+        }
+    }
     // fill(105, 202, 255, 50);
     // rectMode(CORNERS);
     // rect(0, 0, width, height);
@@ -362,31 +408,20 @@ function draw () {
 
     fill(255);
     noStroke();
+    textAlign(LEFT);
     textSize(20);
     text("Score: " + score.toFixed(2), 20, 30);
     textSize(10);
 
-    text("Best: " + highscore.toFixed(2), 23, 44);
+    text("⭐ Best: " + highscore.toFixed(2), 23, 44);
     textSize(15);
-    text("Time: " + (elapsedTime*0.001).toFixed(3), 450, 20);
+    textAlign(RIGHT);
+    text((elapsedTime*0.001).toFixed(3) + "🕑", width-10, 30);
 
-    if(dead){
-        textSize(50);
-        fill(255, 0, 0);
-        text("GameOver", 200, 250);
-
-        gameOver();
-    }
 }
 
 function calculateScore() {
     // Add meters/points to the score
     score = forg.posY/100;
     highscore = max(highscore, score);
-}
-
-
-function gameOver(){
-    noLoop();
-    console.log("Game over!!!");
 }
